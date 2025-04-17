@@ -1,6 +1,8 @@
 import * as fs from "fs";
 import path from "path";
 import converterConfig, {
+  after,
+  before,
   IRuleConfig,
   IRuleConfigType,
 } from "./convert-config";
@@ -29,15 +31,16 @@ converterConfig.forEach((item) => {
 });
 
 class Converter {
-  PATH_INPUT = path.join(__dirname, "../view");
-  PATH_OUTPUT = path.join(__dirname, "../view-converted");
+  PATH_INPUT = `E:\\converter\\view`;
+  PATH_OUTPUT = `E:\\converter\\view-converted`;
+  PATH_MATCH = `compl.jsp$`;
 
   walkDir(dir: string) {
     fs.readdirSync(dir).forEach((file) => {
       const fullPath = path.join(dir, file);
       if (fs.statSync(fullPath).isDirectory()) {
         this.walkDir(fullPath); // 🌀 Đệ quy nếu là folder
-      } else {
+      } else if (new RegExp(this.PATH_MATCH).test(fullPath)) {
         this.convertFile(fullPath); // 📄 Gọi callback nếu là file
       }
     });
@@ -50,14 +53,29 @@ class Converter {
     content = this.handleMove(content);
     content = this.handleWrap(content);
 
-    fs.writeFileSync(path.replace(this.PATH_INPUT, this.PATH_OUTPUT), content);
+    try {
+      fs.writeFileSync(
+        path.replace(this.PATH_INPUT, this.PATH_OUTPUT),
+        content
+      );
+    } catch {
+      fs.mkdirSync(
+        path.replace(this.PATH_INPUT, this.PATH_OUTPUT).replace(/[\w\.]+$/, ""),
+        { recursive: true }
+      );
 
-    console.log("✅ Done: ", path);
+      fs.writeFileSync(
+        path.replace(this.PATH_INPUT, this.PATH_OUTPUT),
+        content
+      );
+    }
+
+    // console.log("✅ Done: ", path);
   }
 
   handleDelete(content: string) {
     deleteRules.forEach((dr) => {
-      const regex = new RegExp(dr.detected, "g");
+      const regex = this.regexParser(dr.detected);
       const openTags = content.match(regex);
 
       openTags?.forEach((ot) => {
@@ -74,11 +92,6 @@ class Converter {
             if (m.startsWith("</")) i--;
             else i++;
 
-            console.log({
-              i,
-              m,
-            });
-
             if (!i) return "";
           }
           return m;
@@ -91,7 +104,7 @@ class Converter {
 
   handleEdit(content: string) {
     editRules.forEach((er) => {
-      const regex = new RegExp(er.detected, "g");
+      const regex = this.regexParser(er.detected);
       content = content.replace(regex, er.dataReplaced!);
     });
 
@@ -103,11 +116,17 @@ class Converter {
   }
 
   handleWrap(content: string) {
+    wrapRules.forEach((er) => {
+      const regex = this.regexParser(er.detected);
+      content = content.replace(regex, er.dataReplaced!);
+    });
+
     return content;
   }
 
   regexParser(rgx: string) {
-    // rgx = rgx.replace(/\\\//g, "/");
+    rgx = rgx.replace(/%before%/g, `(${before})`);
+    rgx = rgx.replace(/%after%/g, `(${after})`);
     return new RegExp(rgx, "g");
   }
 
