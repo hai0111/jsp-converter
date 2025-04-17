@@ -10,8 +10,9 @@ export interface IRuleConfig {
   dataReplaced?: string;
 }
 
-export const anyRgx = /(.|\n|\s)/;
-export const spaceRgx = /(\n|\s)/;
+export const spaceRgx = `/\n|\s|\t|\r/`;
+export const anyRgx = `/\n|\s|\t|\r|.|/`;
+const before = `(<c:[^>]+>|<[%!]--(${anyRgx})+--%?>)(${spaceRgx})*`;
 
 const rulesConfig: IRuleConfig[] = [
   {
@@ -35,6 +36,13 @@ const rulesConfig: IRuleConfig[] = [
   },
   {
     type: IRuleConfigType.EDIT,
+    detected: `<img[^>]*img_mark[^>]*>\s*\r\n +([^ ].+(?=\r))`,
+    dataReplaced: `<c:import url="/WEB-INF/view/common/asis/section_title.jsp">
+                                        <c:param name="title" value="$1" />
+                                    </c:import>`,
+  },
+  {
+    type: IRuleConfigType.WRAP,
     detected: `<img[^>]*img_mark[^>]*>\s*\r\n +([^ ].+(?=\r))`,
     dataReplaced: `<c:import url="/WEB-INF/view/common/asis/section_title.jsp">
                                         <c:param name="title" value="$1" />

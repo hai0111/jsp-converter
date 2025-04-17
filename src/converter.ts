@@ -106,6 +106,11 @@ class Converter {
     return content;
   }
 
+  regexParser(rgx: string) {
+    // rgx = rgx.replace(/\\\//g, "/");
+    return new RegExp(rgx, "g");
+  }
+
   run() {
     this.walkDir(this.PATH_INPUT);
     deleteRules.forEach((d) => {});
