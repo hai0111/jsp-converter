@@ -1,39 +1,51 @@
 import * as fs from "fs";
 import path from "path";
-import converterConfig, {
-  after,
-  before,
-  IRuleConfig,
-  IRuleConfigType,
-} from "./convert-config";
-
-const deleteRules: IRuleConfig[] = [];
-const editRules: IRuleConfig[] = [];
-const moveRules: IRuleConfig[] = [];
-const wrapRules: IRuleConfig[] = [];
-
-converterConfig.forEach((item) => {
-  switch (item.type) {
-    case IRuleConfigType.DELETE:
-      ``;
-      deleteRules.push(item);
-      break;
-    case IRuleConfigType.EDIT:
-      editRules.push(item);
-      break;
-    case IRuleConfigType.MOVE:
-      moveRules.push(item);
-      break;
-    case IRuleConfigType.WRAP:
-      wrapRules.push(item);
-      break;
-  }
-});
+import { after, before, IRuleConfig, IRuleConfigType } from "./configs/utils";
+import * as converterConfig from "./configs";
+import dotenv from "dotenv";
+dotenv.config();
 
 class Converter {
-  PATH_INPUT = `E:\\converter\\view`;
-  PATH_OUTPUT = `E:\\converter\\view-converted`;
+  PATH_INPUT = process.env.PATH_INPUT!;
+  PATH_OUTPUT = process.env.PATH_OUTPUT!;
   PATH_MATCH = `compl.jsp$`;
+  CONFIGS = ["compl", "common"];
+
+  deleteRules: IRuleConfig[] = [];
+  editRules: IRuleConfig[] = [];
+  moveRules: IRuleConfig[] = [];
+  wrapRules: IRuleConfig[] = [];
+
+  init() {
+    const configs = [];
+    for (const key in converterConfig) {
+      if (this.CONFIGS.includes(key)) {
+        configs.push(...converterConfig[key as keyof typeof converterConfig]);
+      }
+    }
+
+    configs.forEach((item) => {
+      switch (item.type) {
+        case IRuleConfigType.DELETE:
+          this.deleteRules.push(item);
+          break;
+        case IRuleConfigType.EDIT:
+          this.editRules.push(item);
+          break;
+        case IRuleConfigType.MOVE:
+          this.moveRules.push(item);
+          break;
+        case IRuleConfigType.WRAP:
+          this.wrapRules.push(item);
+          break;
+      }
+    });
+
+    console.log(this.deleteRules);
+    console.log(this.editRules);
+    console.log(this.moveRules);
+    console.log(this.wrapRules);
+  }
 
   walkDir(dir: string) {
     fs.readdirSync(dir).forEach((file) => {
@@ -70,11 +82,11 @@ class Converter {
       );
     }
 
-    // console.log("✅ Done: ", path);
+    console.log("✅ Done: ", path);
   }
 
   handleDelete(content: string) {
-    deleteRules.forEach((dr) => {
+    this.deleteRules.forEach((dr) => {
       const regex = this.regexParser(dr.detected);
       const openTags = content.match(regex);
 
@@ -103,7 +115,7 @@ class Converter {
   }
 
   handleEdit(content: string) {
-    editRules.forEach((er) => {
+    this.editRules.forEach((er) => {
       const regex = this.regexParser(er.detected);
       content = content.replace(regex, er.dataReplaced!);
     });
@@ -116,7 +128,7 @@ class Converter {
   }
 
   handleWrap(content: string) {
-    wrapRules.forEach((er) => {
+    this.wrapRules.forEach((er) => {
       const regex = this.regexParser(er.detected);
       content = content.replace(regex, er.dataReplaced!);
     });
@@ -131,8 +143,8 @@ class Converter {
   }
 
   run() {
+    this.init();
     this.walkDir(this.PATH_INPUT);
-    deleteRules.forEach((d) => {});
   }
 }
 
