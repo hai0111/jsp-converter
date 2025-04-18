@@ -1,6 +1,13 @@
 import * as fs from "fs";
 import path from "path";
-import { after, before, IRuleConfig, IRuleConfigType } from "./configs/utils";
+import {
+  after,
+  anyRgx,
+  before,
+  IRuleConfig,
+  IRuleConfigType,
+  spaceRgx,
+} from "./configs/utils";
 import * as converterConfig from "./configs";
 import dotenv from "dotenv";
 dotenv.config();
@@ -8,8 +15,8 @@ dotenv.config();
 class Converter {
   PATH_INPUT = process.env.PATH_INPUT!;
   PATH_OUTPUT = process.env.PATH_OUTPUT!;
-  PATH_MATCH = `compl.jsp$`;
-  CONFIGS = ["compl", "common"];
+  PATH_MATCH = `index.jsp$`;
+  CONFIGS = ["common"];
 
   deleteRules: IRuleConfig[] = [];
   editRules: IRuleConfig[] = [];
@@ -40,11 +47,6 @@ class Converter {
           break;
       }
     });
-
-    console.log(this.deleteRules);
-    console.log(this.editRules);
-    console.log(this.moveRules);
-    console.log(this.wrapRules);
   }
 
   walkDir(dir: string) {
@@ -60,7 +62,7 @@ class Converter {
 
   convertFile(path: string) {
     let content = fs.readFileSync(path, "utf8");
-    content = this.handleDelete(content);
+    content = this.handleDelete(content, path);
     content = this.handleEdit(content);
     content = this.handleMove(content);
     content = this.handleWrap(content);
@@ -85,7 +87,7 @@ class Converter {
     console.log("✅ Done: ", path);
   }
 
-  handleDelete(content: string) {
+  handleDelete(content: string, path?: string) {
     this.deleteRules.forEach((dr) => {
       const regex = this.regexParser(dr.detected);
       const openTags = content.match(regex);
@@ -98,8 +100,9 @@ class Converter {
         });
         const ct = "</" + ot.match(/\w+/)![0] + ">";
         const _ot = "<" + ot.match(/\w+/)![0];
+        const regex = `${_ot}|${ct}`;
         let i = 1;
-        content = content.replace(new RegExp(`${_ot}|${ct}`, "g"), (m, p) => {
+        content = content.replace(this.regexParser(regex), (m, p) => {
           if (p > position) {
             if (m.startsWith("</")) i--;
             else i++;
@@ -117,7 +120,10 @@ class Converter {
   handleEdit(content: string) {
     this.editRules.forEach((er) => {
       const regex = this.regexParser(er.detected);
-      content = content.replace(regex, er.dataReplaced!);
+      content = content.replace(
+        regex,
+        this.getReplacer(er.dataReplaced) as any
+      );
     });
 
     return content;
@@ -130,7 +136,10 @@ class Converter {
   handleWrap(content: string) {
     this.wrapRules.forEach((er) => {
       const regex = this.regexParser(er.detected);
-      content = content.replace(regex, er.dataReplaced!);
+      content = content.replace(
+        regex,
+        this.getReplacer(er.dataReplaced) as any
+      );
     });
 
     return content;
@@ -139,14 +148,28 @@ class Converter {
   regexParser(rgx: string) {
     rgx = rgx.replace(/%before%/g, `(${before})`);
     rgx = rgx.replace(/%after%/g, `(${after})`);
+    rgx = rgx.replace(/%space%/g, `(${spaceRgx})`);
+    rgx = rgx.replace(/%any%/g, `(${anyRgx})`);
     return new RegExp(rgx, "g");
+  }
+
+  getReplacer(replacer: IRuleConfig["dataReplaced"]) {
+    if (!replacer) return "";
+    else if (typeof replacer === "string") return replacer;
+    return (_: string, ...params: any[]) => {
+      params.pop();
+      params.pop();
+      return replacer(_, ...params);
+    };
   }
 
   run() {
     this.init();
-    this.walkDir(this.PATH_INPUT);
+    if (new RegExp(this.PATH_MATCH).test(this.PATH_INPUT))
+      this.convertFile(this.PATH_INPUT); // 📄 Gọi callback nếu là file
+    else this.walkDir(this.PATH_INPUT);
   }
 }
 
 const app = new Converter();
-app.run();
+// app.run();
