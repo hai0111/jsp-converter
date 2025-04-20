@@ -15,7 +15,7 @@ dotenv.config();
 class Converter {
   PATH_INPUT = process.env.PATH_INPUT!;
   PATH_OUTPUT = process.env.PATH_OUTPUT!;
-  PATH_MATCH = `index.jsp$`;
+  PATH_MATCH = `compl.jsp$`;
   CONFIGS = ["common"];
 
   deleteRules: IRuleConfig[] = [];
@@ -172,4 +172,4 @@ class Converter {
 }
 
 const app = new Converter();
-// app.run();
+app.run();
