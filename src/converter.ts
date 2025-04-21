@@ -1,22 +1,42 @@
+import dotenv from "dotenv";
 import * as fs from "fs";
 import path from "path";
-import {
-  after,
-  anyRgx,
-  before,
-  IRuleConfig,
-  IRuleConfigType,
-  spaceRgx,
-} from "./configs/utils";
 import * as converterConfig from "./configs";
-import dotenv from "dotenv";
+import { IRuleConfig, IRuleConfigType, regexParser } from "./configs/utils";
 dotenv.config();
+
+declare global {
+  interface String {
+    replaceClasses(pattern: string | RegExp, replacement: string): string;
+  }
+}
+
+String.prototype.replaceClasses = function (pattern, classes: string) {
+  let result = this.toString();
+  const matches = this.match(pattern);
+  matches?.forEach((matched) => {
+    let replacer = matched;
+    const isHasClass = /class="[^"]*"/.test(replacer);
+    if (isHasClass) {
+      replacer = replacer.replace(/class="([^"]*)"/g, `class="${classes}"`);
+    } else {
+      replacer = replacer.replace(
+        /<\w+/g,
+        (str) => `${str} class="${classes}"`
+      );
+    }
+    result = result.replace(matched, replacer);
+  });
+
+  return result;
+};
 
 class Converter {
   PATH_INPUT = process.env.PATH_INPUT!;
   PATH_OUTPUT = process.env.PATH_OUTPUT!;
   PATH_MATCH = `compl.jsp$`;
-  CONFIGS = ["common"];
+  CONFIGS = ["common", "detail"];
+  WRITABLE = true;
 
   deleteRules: IRuleConfig[] = [];
   editRules: IRuleConfig[] = [];
@@ -67,6 +87,8 @@ class Converter {
     content = this.handleMove(content);
     content = this.handleWrap(content);
 
+    if (!this.WRITABLE) return;
+
     try {
       fs.writeFileSync(
         path.replace(this.PATH_INPUT, this.PATH_OUTPUT),
@@ -89,7 +111,7 @@ class Converter {
 
   handleDelete(content: string, path?: string) {
     this.deleteRules.forEach((dr) => {
-      const regex = this.regexParser(dr.detected);
+      const regex = regexParser(dr.detected);
       const openTags = content.match(regex);
 
       openTags?.forEach((ot) => {
@@ -102,7 +124,7 @@ class Converter {
         const _ot = "<" + ot.match(/\w+/)![0];
         const regex = `${_ot}|${ct}`;
         let i = 1;
-        content = content.replace(this.regexParser(regex), (m, p) => {
+        content = content.replace(regexParser(regex), (m, p) => {
           if (p > position) {
             if (m.startsWith("</")) i--;
             else i++;
@@ -119,7 +141,7 @@ class Converter {
 
   handleEdit(content: string) {
     this.editRules.forEach((er) => {
-      const regex = this.regexParser(er.detected);
+      const regex = regexParser(er.detected);
       content = content.replace(
         regex,
         this.getReplacer(er.dataReplaced) as any
@@ -135,22 +157,29 @@ class Converter {
 
   handleWrap(content: string) {
     this.wrapRules.forEach((er) => {
-      const regex = this.regexParser(er.detected);
-      content = content.replace(
-        regex,
-        this.getReplacer(er.dataReplaced) as any
+      const [openWrap, closeWrap] = (er.dataReplaced as string).split(
+        /%content%|\$\d/
       );
+      const regexBefore = `(?<!${openWrap.replace(
+        regexParser("%space%+"),
+        "%space%*"
+      )})`;
+      const regexAfter = `(?!${closeWrap.replace(
+        regexParser("%space%+"),
+        "%space%*"
+      )})`;
+
+      const regex = regexParser(regexBefore + er.detected + regexAfter);
+      content = content.replace(regex, (_, ...matchers) => {
+        const content = matchers.find((m) =>
+          m?.replace(regexParser("%space%+"), "")
+        );
+        this.getReplacer(er.dataReplaced) as any;
+        return (er.dataReplaced as string).replace(/%content%|\$\d/, content);
+      });
     });
 
     return content;
-  }
-
-  regexParser(rgx: string) {
-    rgx = rgx.replace(/%before%/g, `(${before})`);
-    rgx = rgx.replace(/%after%/g, `(${after})`);
-    rgx = rgx.replace(/%space%/g, `(${spaceRgx})`);
-    rgx = rgx.replace(/%any%/g, `(${anyRgx})`);
-    return new RegExp(rgx, "g");
   }
 
   getReplacer(replacer: IRuleConfig["dataReplaced"]) {
@@ -165,7 +194,7 @@ class Converter {
 
   run() {
     this.init();
-    if (new RegExp(this.PATH_MATCH).test(this.PATH_INPUT))
+    if (new RegExp(/\w+\.\w+$/).test(this.PATH_INPUT))
       this.convertFile(this.PATH_INPUT); // 📄 Gọi callback nếu là file
     else this.walkDir(this.PATH_INPUT);
   }
