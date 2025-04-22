@@ -11,16 +11,16 @@ export interface IRuleConfig {
 }
 
 export const classRgx = 'class="[^"]*"';
-export const spaceRgx = `\n|\\s|\t|\r`;
-export const anyRgx = `[\\s\\S]`;
-export const before = `(<c:[^>]+>|<[%!]--(${anyRgx})+--%?>|&nbsp;)(${spaceRgx})*`;
-export const after = `(${spaceRgx})*(</c:[^>]+>|<[%!]--(${anyRgx})+--%?>|&nbsp;)`;
+export const spaceRgx = "[\n\\s\t\r]";
+export const anyRgx = "[\\s\\S]";
+export const before = `(?:<c:[^>]+((?<!/)>)|<[%!]--((?<!${anyRgx}--%?>)${anyRgx})+?--%?>|&nbsp;|${spaceRgx})`;
+export const after = `(?:</c:[^>]+>|<[%!]--((?<!${anyRgx}--%?>)${anyRgx})+?--%?>|&nbsp;|${spaceRgx}+)`;
 
 export const regexParser = (rgx: string) => {
-  rgx = rgx.replace(/%class%/g, `(${classRgx})`);
-  rgx = rgx.replace(/%before%/g, `(${before})`);
-  rgx = rgx.replace(/%after%/g, `(${after})`);
-  rgx = rgx.replace(/%space%/g, `(${spaceRgx})`);
-  rgx = rgx.replace(/%any%/g, `(${anyRgx})`);
+  rgx = rgx.replace(/%class%/g, classRgx);
+  rgx = rgx.replace(/%space%/g, spaceRgx);
+  rgx = rgx.replace(/%any%/g, anyRgx);
+  rgx = rgx.replace(/%before%/g, before);
+  rgx = rgx.replace(/%after%/g, after);
   return new RegExp(rgx, "g");
 };

@@ -82,12 +82,16 @@ class Converter {
 
   convertFile(path: string) {
     let content = fs.readFileSync(path, "utf8");
+
+    if (!this.WRITABLE) {
+      this.testRegex(content);
+      return;
+    }
+
     content = this.handleDelete(content);
     content = this.handleEdit(content);
     content = this.handleMove(content);
     content = this.handleWrap(content);
-
-    if (!this.WRITABLE) return;
 
     try {
       fs.writeFileSync(
@@ -201,6 +205,12 @@ class Converter {
     if (new RegExp(/\w+\.\w+$/).test(this.PATH_INPUT))
       this.convertFile(this.PATH_INPUT); // 📄 Gọi callback nếu là file
     else this.walkDir(this.PATH_INPUT);
+  }
+  testRegex(content: string) {
+    const regex = regexParser("%before%*<input[^>]*>");
+
+    console.log(regex.source);
+    console.log(content.match(regex)?.[0]);
   }
 }
 
