@@ -7,11 +7,16 @@ const rulesConfig: IRuleConfig[] = [
   },
   {
     type: IRuleConfigType.DELETE,
-    detected: `<div class="clear"></div>`,
+    detected: `<div[^>]*content_main[^>]*">`,
   },
   {
     type: IRuleConfigType.DELETE,
-    detected: `<div[^>]*content_main[^>]*>`,
+    detected: `<div class="clear"></div>`,
+  },
+  {
+    type: IRuleConfigType.EDIT,
+    detected: `<c:import[^>]*head_google_font.jsp[^>]*>`,
+    dataReplaced: "",
   },
   {
     type: IRuleConfigType.EDIT,
@@ -21,13 +26,13 @@ const rulesConfig: IRuleConfig[] = [
   {
     type: IRuleConfigType.EDIT,
     detected: "btn_\\d+",
-    dataReplaced: "btn",
+    dataReplaced: "btn btn--font-size-16 btn--font-weight-700",
   },
-  {
-    type: IRuleConfigType.EDIT,
-    detected: `<[%!]--(${anyRgx})+?--%?>`,
-    dataReplaced: "",
-  },
+  // {
+  //   type: IRuleConfigType.EDIT,
+  //   detected: `<[%!]--(${anyRgx})+?--%?>`,
+  //   dataReplaced: "",
+  // },
   {
     type: IRuleConfigType.EDIT,
     detected:
@@ -47,7 +52,7 @@ const rulesConfig: IRuleConfig[] = [
   {
     type: IRuleConfigType.EDIT,
     detected:
-      '<img[^>]*img_mark[^>]*>([^<]*)(%space%*<div class="back_button_area">%any%*?</div>)?%space%*<br class="clear">',
+      '<img[^>]*img_mark[^>]*>([^<]*)(%space%*<div class="back_button_area">%any%*?</div>)?',
     dataReplaced: (str, ...matches) => {
       const [title, buttonDiv] = matches;
       let href: string | undefined;
@@ -71,36 +76,40 @@ const rulesConfig: IRuleConfig[] = [
   },
   {
     type: IRuleConfigType.EDIT,
-    detected: `<table[^>]*class="comm_tbl[ \\w]+"[^>]*>%any%+?</table>`,
+    detected: `<ol%any%*?</ol>`,
     dataReplaced: (str) => {
-      str = str.replaceClasses(
-        regexParser("(<table[^>])%class%?([^>]*>)"),
-        "form-table"
-      );
-
       str = str.replace(
-        regexParser(
-          "<tr>%space%*<td[^>]*tbl_header txt_center[^>]*>([^<]*)</td>%space%*</tr>"
-        ),
-        '<div class="form-table__title">$2</div>'
+        regexParser("<ol[^>]*>"),
+        `<div class="stepper__container">
+            <div class="stepper">`
+      );
+      str = str.replace(
+        regexParser("</ol>"),
+        `   </div>
+         </div>`
       );
 
-      str = str.replaceClasses(
-        regexParser("<tr[^>]*[^>]*>"),
-        "form-table__row"
-      );
+      let isBeforeCurrent = true;
+      str = str.replace(regexParser("<li[^>]*>%any%*?</li>"), (li) => {
+        if (li.includes("current")) {
+          li = li.replaceClasses(
+            /<li[^>]*>/,
+            "stepper__item stepper__item--current"
+          );
+          isBeforeCurrent = false;
+        } else if (isBeforeCurrent)
+          li = li.replaceClasses(
+            /<li[^>]*>/,
+            "stepper__item stepper__item--completed"
+          );
+        else li = li.replaceClasses(/<li[^>]*>/, "stepper__item");
 
-      str = str.replaceClasses(
-        regexParser("<td[^>]*tbl_header[^>]*>"),
-        "form-table__label"
-      );
-      str = str.replaceClasses(
-        regexParser("<td((?![^>]*form-table__label)[^>])*>"),
-        "form-table__control"
-      );
+        li = li.replace(/<\/?(a|em)[^>]*>/g, "");
+        return li;
+      });
 
-      str = str.replace(regexParser("</(table|tr|td)>"), "</div>");
-      str = str.replace(regexParser("<(table|tr|td)"), "<div");
+      str = str.replace(/li|ol/g, "div");
+
       return str;
     },
   },

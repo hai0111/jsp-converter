@@ -35,7 +35,7 @@ class Converter {
   PATH_INPUT = process.env.PATH_INPUT!;
   PATH_OUTPUT = process.env.PATH_OUTPUT!;
   PATH_MATCH = `compl.jsp$`;
-  CONFIGS = ["common", "detail"];
+  CONFIGS = ["common", "compl"];
   WRITABLE = true;
 
   deleteRules: IRuleConfig[] = [];
@@ -82,7 +82,7 @@ class Converter {
 
   convertFile(path: string) {
     let content = fs.readFileSync(path, "utf8");
-    content = this.handleDelete(content, path);
+    content = this.handleDelete(content);
     content = this.handleEdit(content);
     content = this.handleMove(content);
     content = this.handleWrap(content);
@@ -109,7 +109,7 @@ class Converter {
     console.log("✅ Done: ", path);
   }
 
-  handleDelete(content: string, path?: string) {
+  handleDelete(content: string) {
     this.deleteRules.forEach((dr) => {
       const regex = regexParser(dr.detected);
       const openTags = content.match(regex);
@@ -142,6 +142,14 @@ class Converter {
   handleEdit(content: string) {
     this.editRules.forEach((er) => {
       const regex = regexParser(er.detected);
+      if (
+        typeof er.dataReplaced === "string" &&
+        er.dataReplaced.includes("class:")
+      ) {
+        const classes = er.dataReplaced.replace("class:", "");
+        content = content.replaceClasses(regex, classes);
+        return;
+      }
       content = content.replace(
         regex,
         this.getReplacer(er.dataReplaced) as any
@@ -157,24 +165,20 @@ class Converter {
 
   handleWrap(content: string) {
     this.wrapRules.forEach((er) => {
-      const [openWrap, closeWrap] = (er.dataReplaced as string).split(
-        /%content%|\$\d/
-      );
-      const regexBefore = `(?<!${openWrap.replace(
-        regexParser("%space%+"),
-        "%space%*"
-      )})`;
-      const regexAfter = `(?!${closeWrap.replace(
-        regexParser("%space%+"),
-        "%space%*"
-      )})`;
+      const [openWrap] = (er.dataReplaced as string).split(/%content%|\$\d/);
 
-      const regex = regexParser(regexBefore + er.detected + regexAfter);
+      const regexOpen = regexParser(
+        openWrap.replace(regexParser("%space%*"), "%space%*")
+      );
+
+      if (regexOpen.test(content)) return;
+
+      const regex = regexParser(er.detected);
+
       content = content.replace(regex, (_, ...matchers) => {
-        const content = matchers.find((m) =>
-          m?.replace(regexParser("%space%+"), "")
+        const content = matchers.find(
+          (m) => m?.replace && m?.replace(regexParser("%space%+"), "")
         );
-        this.getReplacer(er.dataReplaced) as any;
         return (er.dataReplaced as string).replace(/%content%|\$\d/, content);
       });
     });

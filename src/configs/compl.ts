@@ -7,33 +7,26 @@ const rulesConfig: IRuleConfig[] = [
   },
   {
     type: IRuleConfigType.EDIT,
-    detected: `<img[^>]*img_mark[^>]*>(${spaceRgx})*(.+)`,
-    dataReplaced: `<c:import url="/WEB-INF/view/common/asis/section_title.jsp">
-                                          <c:param name="title" value="$2" />
-                                      </c:import>`,
-  },
-  {
-    type: IRuleConfigType.EDIT,
-    detected: `<p>(?=(${anyRgx})+spring(${anyRgx})+</p>)`,
+    detected: `<p>(?=%any%+spring%any%+</p>)`,
     dataReplaced: `<p class="asis-content__complete__txt">`,
   },
   {
     type: IRuleConfigType.WRAP,
-    detected: `(((${spaceRgx})*?%before%*<input[^>]*href[^>]*>%after%*(${spaceRgx})*)+)`,
-    dataReplaced: `
+    detected: `(%before%*<input[^>]%after%*)+`,
+    dataReplaced: ` 
       <div class="asis-content__complete__btn">
-        $1
+        %content%
       </div>
       `,
   },
   {
     type: IRuleConfigType.WRAP,
-    detected: `(?<=<c:import[^>]*section_title[^>]*>(${anyRgx})+</c:import>)(${anyRgx}+)(?=<c:import[^>]*footer[^>]*>)`,
-    dataReplaced: `
+    detected: `(?<=<c:import[^>]*section_title[^>]*>%any%+</c:import>)(%any%+)(?=<c:import[^>]*footer[^>]*>)`,
+    dataReplaced: ` 
       <main class="asis-main asis-main--yellow">
           <div class="asis-content__wrapper">
               <div class="asis-content asis-content--complete">
-                $2
+                %content%
               </div>
           </div>
       </main>
