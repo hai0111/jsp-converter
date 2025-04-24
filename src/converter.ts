@@ -90,8 +90,8 @@ class Converter {
 
     content = this.handleDelete(content);
     content = this.handleEdit(content);
-    content = this.handleMove(content);
     content = this.handleWrap(content);
+    content = this.handleMove(content);
     content = this.handleEditWithPath(content, path);
 
     try {
@@ -169,8 +169,10 @@ class Converter {
       const regex = regexParser(mr.detected);
       const matchers = content.match(regex);
       matchers?.forEach((m) => {
-        content = content.replace(m, "");
-        content = content.replace(regexParser(mr.dataReplaced as string), m);
+        if (regexParser(mr.dataReplaced as string).test(content)) {
+          content = content.replace(m, "");
+          content = content.replace(regexParser(mr.dataReplaced as string), m);
+        }
       });
     });
 
