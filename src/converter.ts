@@ -2,7 +2,7 @@ import dotenv from "dotenv";
 import * as fs from "fs";
 import path from "path";
 import * as converterConfig from "./configs";
-import { IRuleConfig, IRuleConfigType, regexParser } from "./configs/utils";
+import { IRuleConfig, ERuleConfigType, regexParser } from "./configs/utils";
 dotenv.config();
 
 declare global {
@@ -13,9 +13,9 @@ declare global {
 
 String.prototype.replaceClasses = function (pattern, classes: string) {
   let result = this.toString();
-  const matches = this.match(pattern);
-  matches?.forEach((matched) => {
-    let replacer = matched;
+
+  result = result.replace(pattern, (str) => {
+    let replacer = str;
     const isHasClass = /class="[^"]*"/.test(replacer);
     if (isHasClass) {
       replacer = replacer.replace(/class="([^"]*)"/g, `class="${classes}"`);
@@ -25,7 +25,7 @@ String.prototype.replaceClasses = function (pattern, classes: string) {
         (str) => `${str} class="${classes}"`
       );
     }
-    result = result.replace(matched, replacer);
+    return replacer;
   });
 
   return result;
@@ -34,8 +34,8 @@ String.prototype.replaceClasses = function (pattern, classes: string) {
 class Converter {
   PATH_INPUT = process.env.PATH_INPUT!;
   PATH_OUTPUT = process.env.PATH_OUTPUT!;
-  PATH_MATCH = `compl.jsp$`;
-  CONFIGS = ["common", "compl"];
+  PATH_MATCH = `index.jsp$`;
+  CONFIGS: (keyof typeof converterConfig)[] = ["common", "list"];
   WRITABLE = true;
 
   deleteRules: IRuleConfig[] = [];
@@ -46,23 +46,23 @@ class Converter {
   init() {
     const configs = [];
     for (const key in converterConfig) {
-      if (this.CONFIGS.includes(key)) {
+      if (this.CONFIGS.includes(key as keyof typeof converterConfig)) {
         configs.push(...converterConfig[key as keyof typeof converterConfig]);
       }
     }
 
     configs.forEach((item) => {
       switch (item.type) {
-        case IRuleConfigType.DELETE:
+        case ERuleConfigType.DELETE:
           this.deleteRules.push(item);
           break;
-        case IRuleConfigType.EDIT:
+        case ERuleConfigType.EDIT:
           this.editRules.push(item);
           break;
-        case IRuleConfigType.MOVE:
+        case ERuleConfigType.MOVE:
           this.moveRules.push(item);
           break;
-        case IRuleConfigType.WRAP:
+        case ERuleConfigType.WRAP:
           this.wrapRules.push(item);
           break;
       }
@@ -92,6 +92,7 @@ class Converter {
     content = this.handleEdit(content);
     content = this.handleMove(content);
     content = this.handleWrap(content);
+    content = this.handleEditWithPath(content, path);
 
     try {
       fs.writeFileSync(
@@ -164,12 +165,33 @@ class Converter {
   }
 
   handleMove(content: string) {
+    this.moveRules.forEach((mr) => {
+      const regex = regexParser(mr.detected);
+      const matchers = content.match(regex);
+      matchers?.forEach((m) => {
+        content = content.replace(m, "");
+        content = content.replace(regexParser(mr.dataReplaced as string), m);
+      });
+    });
+
+    return content;
+  }
+
+  handleEditWithPath(content: string, path: string) {
+    const parentPath = path.match(/(?<=view\\)\w+/)?.[0] || "";
+
+    content = content.replace(
+      '<c:import url="/WEB-INF/view/common/asis/menu.jsp"/>',
+      `<c:import url="/WEB-INF/view/common/asis/menu.jsp">
+        <c:param name="activeTab" value="${parentPath}"/>
+    </c:import>`
+    );
     return content;
   }
 
   handleWrap(content: string) {
-    this.wrapRules.forEach((er) => {
-      const [openWrap] = (er.dataReplaced as string).split(/%content%|\$\d/);
+    this.wrapRules.forEach((wr) => {
+      const [openWrap] = (wr.dataReplaced as string).split(/%content%|\$\d/);
 
       const regexOpen = regexParser(
         openWrap.replace(regexParser("%space%*"), "%space%*")
@@ -177,13 +199,13 @@ class Converter {
 
       if (regexOpen.test(content)) return;
 
-      const regex = regexParser(er.detected);
+      const regex = regexParser(wr.detected);
 
       content = content.replace(regex, (_, ...matchers) => {
         const content = matchers.find(
           (m) => m?.replace && m?.replace(regexParser("%space%+"), "")
         );
-        return (er.dataReplaced as string).replace(/%content%|\$\d/, content);
+        return (wr.dataReplaced as string).replace(/%content%|\$\d/, content);
       });
     });
 

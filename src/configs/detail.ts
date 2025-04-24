@@ -1,8 +1,8 @@
-import { IRuleConfig, IRuleConfigType } from "./utils";
+import { IRuleConfig, ERuleConfigType } from "./utils";
 
 const ruleConfigs: IRuleConfig[] = [
   {
-    type: IRuleConfigType.WRAP,
+    type: ERuleConfigType.WRAP,
     detected:
       "(?<=<c:import[^>]*section_title[^>]*>%any%*?</c:import>)(%any%*)(?=%before%*<c:import[^>]*footer[^>]*>)",
     dataReplaced: `

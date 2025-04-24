@@ -1,27 +1,30 @@
-import { anyRgx, IRuleConfig, IRuleConfigType, spaceRgx } from "./utils";
+import { anyRgx, IRuleConfig, ERuleConfigType, spaceRgx } from "./utils";
 
 const rulesConfig: IRuleConfig[] = [
   {
-    type: IRuleConfigType.DELETE,
+    type: ERuleConfigType.DELETE,
     detected: `<div[^>]*msg_box_compl[^>]*>`,
   },
   {
-    type: IRuleConfigType.EDIT,
-    detected: `<p>(?=%any%+spring%any%+</p>)`,
+    type: ERuleConfigType.DELETE,
+    detected: `<div[^>]*submit_area[^>]*>`,
+  },
+  {
+    type: ERuleConfigType.EDIT,
+    detected: `<p>(?=%space%*<spring:message%any%+</p>)`,
     dataReplaced: `<p class="asis-content__complete__txt">`,
   },
   {
-    type: IRuleConfigType.WRAP,
-    detected: `(%before%*<input[^>]%after%*)+`,
-    dataReplaced: ` 
-      <div class="asis-content__complete__btn">
-        %content%
-      </div>
-      `,
+    type: ERuleConfigType.EDIT,
+    detected: `(%before%*<p class="asis-content__complete__txt">)`,
+    dataReplaced: `
+    <img src="\${f:url('/dist/images/icons/CheckCircleBrokenIcon.svg')}" alt=""
+                     width="48" height="48" class="asis-content__complete__icon">
+                     $1`,
   },
   {
-    type: IRuleConfigType.WRAP,
-    detected: `(?<=<c:import[^>]*section_title[^>]*>%any%+</c:import>)(%any%+)(?=<c:import[^>]*footer[^>]*>)`,
+    type: ERuleConfigType.WRAP,
+    detected: `(?<=<c:import[^>]*section_title[^>]*>%any%+</c:import>)(%any%+)(?=<!-- footer start -->)`,
     dataReplaced: ` 
       <main class="asis-main asis-main--yellow">
           <div class="asis-content__wrapper">
@@ -30,6 +33,15 @@ const rulesConfig: IRuleConfig[] = [
               </div>
           </div>
       </main>
+      `,
+  },
+  {
+    type: ERuleConfigType.WRAP,
+    detected: `((%before%*<input[^>]*href[^>]*>%after%*)+)`,
+    dataReplaced: ` 
+      <div class="asis-content__complete__btn">
+        %content%
+      </div>
       `,
   },
 ];
