@@ -34,7 +34,7 @@ String.prototype.replaceClasses = function (pattern, classes: string) {
 class Converter {
   PATH_INPUT = process.env.PATH_INPUT!;
   PATH_OUTPUT = process.env.PATH_OUTPUT!;
-  PATH_MATCH = `index.jsp$`;
+  PATH_MATCH = /\\list\.jsp$|\\list\\index\.jsp$/;
   CONFIGS: (keyof typeof converterConfig)[] = ["common", "list"];
   WRITABLE = true;
 
@@ -74,7 +74,7 @@ class Converter {
       const fullPath = path.join(dir, file);
       if (fs.statSync(fullPath).isDirectory()) {
         this.walkDir(fullPath); // 🌀 Đệ quy nếu là folder
-      } else if (new RegExp(this.PATH_MATCH).test(fullPath)) {
+      } else if (this.PATH_MATCH.test(fullPath)) {
         this.convertFile(fullPath); // 📄 Gọi callback nếu là file
       }
     });
@@ -231,10 +231,7 @@ class Converter {
     else this.walkDir(this.PATH_INPUT);
   }
   testRegex(content: string) {
-    const regex = regexParser("%before%*<input[^>]*>");
-
-    console.log(regex.source);
-    console.log(content.match(regex)?.[0]);
+    const regex = this.PATH_MATCH;
   }
 }
 
