@@ -6,6 +6,8 @@ export enum ERuleConfigType {
 }
 export interface IRuleConfig {
   type: ERuleConfigType;
+  isNested?: boolean;
+  keepOriginOnMove?: boolean;
   detected: string;
   dataReplaced?: ((match: string, ...substring: string[]) => string) | string;
 }

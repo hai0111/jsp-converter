@@ -1,4 +1,4 @@
-import { anyRgx, IRuleConfig, ERuleConfigType, regexParser } from "./utils";
+import { ERuleConfigType, IRuleConfig, regexParser } from "./utils";
 
 const rulesConfig: IRuleConfig[] = [
   {
@@ -21,6 +21,11 @@ const rulesConfig: IRuleConfig[] = [
   },
   {
     type: ERuleConfigType.EDIT,
+    detected: `<link((?<![^>]*calendar.css)[^>])*>`,
+    dataReplaced: "",
+  },
+  {
+    type: ERuleConfigType.EDIT,
     detected: `msg_box_error_left(?=")`,
     dataReplaced: "msg_box_error_left alert alert--error",
   },
@@ -29,10 +34,14 @@ const rulesConfig: IRuleConfig[] = [
     detected: `&nbsp;`,
     dataReplaced: "",
   },
+  // {
+  //   type: ERuleConfigType.EDIT,
+  //   detected: `style="[^"]*?"`,
+  //   dataReplaced: "",
+  // },
   {
-    type: ERuleConfigType.EDIT,
-    detected: `style="[^"]*?"`,
-    dataReplaced: "",
+    type: ERuleConfigType.DELETE,
+    detected: `<div[^>]*clear[^>]*">`,
   },
   {
     type: ERuleConfigType.EDIT,
@@ -42,7 +51,7 @@ const rulesConfig: IRuleConfig[] = [
   {
     type: ERuleConfigType.EDIT,
     detected: "btn_\\d+",
-    dataReplaced: "btn btn--primary btn--font-size-16 btn--font-weight-700",
+    dataReplaced: "btn btn--tertiary btn--font-size-16 btn--font-weight-700",
   },
   // {
   //   type: ERuleConfigType.EDIT,
@@ -136,25 +145,6 @@ const rulesConfig: IRuleConfig[] = [
       return str;
     },
   },
-  {
-    type: ERuleConfigType.WRAP,
-    detected: "(?<=<table[^>]*>)(%any%*?)(?=</table>)",
-    dataReplaced: `
-    <tbody class="table__tbody">  
-      %content%
-    </tbody>
-  `,
-  },
-
-  {
-    type: ERuleConfigType.WRAP,
-    detected: "(<table[^>]*>%any%*?</table>)",
-    dataReplaced: `
-    <div class="table__container">  
-      %content%
-    </div>
-  `,
-  },
 
   /* <<------- Pagination */
   {
@@ -213,6 +203,90 @@ const rulesConfig: IRuleConfig[] = [
     </ul>`,
   },
   /* Pagination------->>  */
+
+  /* <<------- Table */
+  {
+    type: ERuleConfigType.EDIT,
+    detected: `<table((?<![^>]*#table)[^>])*>%any%+?</table>`,
+    dataReplaced: (str) => {
+      str = str.replaceClasses(regexParser("(<table[^>]*>)"), "form-table");
+
+      str = str.replace(
+        regexParser(
+          "<tr>%space%*<td[^>]*tbl_header txt_center[^>]*>([^<]*)</td>%space%*</tr>"
+        ),
+        '<div class="form-table__title">$2</div>'
+      );
+
+      str = str.replaceClasses(
+        regexParser("<tr[^>]*[^>]*>"),
+        "form-table__row"
+      );
+
+      str = str.replaceClasses(
+        regexParser("<td[^>]*tbl_header[^>]*>"),
+        "form-table__label"
+      );
+      str = str.replaceClasses(
+        regexParser("<td((?![^>]*form-table__label)[^>])*>"),
+        "form-table__control"
+      );
+
+      str = str.replace(regexParser("</(table|tr|td)>"), "</div>");
+      str = str.replace(regexParser("<(table|tr|td)"), "<div");
+      return str;
+    },
+  },
+  {
+    type: ERuleConfigType.EDIT,
+    detected: `<table[^>]*#table[^>]*>%any%+?</table>`,
+    dataReplaced: (str) => {
+      str = str.replaceClasses(regexParser("<table[^>]*>"), "table");
+
+      str = str.replaceClasses(regexParser("<thead[^>]*>"), "table__thead");
+
+      str = str.replaceClasses(regexParser("<tbody[^>]*>"), "table__tbody");
+
+      str = str.replaceClasses(
+        regexParser("(?<=<thead[^>]*>%any%*)<tr[^>]*>(?=%any%*</thead>)"),
+        "table__thead__row"
+      );
+
+      str = str.replaceClasses(
+        regexParser("(?<!<thead[^>]*>%any%*)<tr[^>]*>(?!%any%*</thead>)"),
+        "table__tbody__row"
+      );
+
+      str = str.replaceClasses(
+        regexParser("<th [^>]*>"),
+        "table__column table__column--border-right table__column--center"
+      );
+
+      str = str.replaceClasses(
+        regexParser("<td[^>]*>"),
+        "table__column table__column--border-right table__column--center"
+      );
+      str = str.replaceClasses(
+        regexParser(
+          "<t[dh][^>]*>(?=((?<!%any%*?</t[dh]>)%any%)*</t[dh]>%after%*</tr>)"
+        ),
+        "table__column table__column--center"
+      );
+
+      return str;
+    },
+  },
+  {
+    type: ERuleConfigType.WRAP,
+    detected: "(?<=<table[^>]*>)(%any%*?)(?=</table>)",
+    dataReplaced: `
+    <tbody class="table__tbody">  
+      %content%
+    </tbody>
+  `,
+  },
+
+  /* Table------->>  */
 ];
 
 export default rulesConfig;

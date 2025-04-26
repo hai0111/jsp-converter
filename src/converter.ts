@@ -34,7 +34,7 @@ String.prototype.replaceClasses = function (pattern, classes: string) {
 class Converter {
   PATH_INPUT = process.env.PATH_INPUT!;
   PATH_OUTPUT = process.env.PATH_OUTPUT!;
-  PATH_MATCH = /\\list\.jsp$|\\list\\index\.jsp$/;
+  PATH_MATCH = /(\\list\\index|\\list).jsp$/;
   CONFIGS: (keyof typeof converterConfig)[] = ["common", "list"];
   WRITABLE = true;
 
@@ -93,6 +93,7 @@ class Converter {
     content = this.handleWrap(content);
     content = this.handleMove(content);
     content = this.handleEditWithPath(content, path);
+    content = this.handleCleanUp(content);
 
     try {
       fs.writeFileSync(
@@ -130,7 +131,7 @@ class Converter {
         const regex = `${_ot}|${ct}`;
         let i = 1;
         content = content.replace(regexParser(regex), (m, p) => {
-          if (p > position) {
+          if (p >= position) {
             if (m.startsWith("</")) i--;
             else i++;
 
@@ -146,19 +147,23 @@ class Converter {
 
   handleEdit(content: string) {
     this.editRules.forEach((er) => {
+      let isLeftover = true;
       const regex = regexParser(er.detected);
-      if (
-        typeof er.dataReplaced === "string" &&
-        er.dataReplaced.includes("class:")
-      ) {
-        const classes = er.dataReplaced.replace("class:", "");
-        content = content.replaceClasses(regex, classes);
-        return;
-      }
-      content = content.replace(
-        regex,
-        this.getReplacer(er.dataReplaced) as any
-      );
+      do {
+        if (
+          typeof er.dataReplaced === "string" &&
+          er.dataReplaced.includes("class:")
+        ) {
+          const classes = er.dataReplaced.replace("class:", "");
+          content = content.replaceClasses(regex, classes);
+          return;
+        }
+        content = content.replace(
+          regex,
+          this.getReplacer(er.dataReplaced) as any
+        );
+        isLeftover = regex.test(content);
+      } while (isLeftover && er.isNested);
     });
 
     return content;
@@ -168,9 +173,13 @@ class Converter {
     this.moveRules.forEach((mr) => {
       const regex = regexParser(mr.detected);
       const matchers = content.match(regex);
+      let removed = false;
       matchers?.forEach((m) => {
         if (regexParser(mr.dataReplaced as string).test(content)) {
-          content = content.replace(m, "");
+          if (!removed && !mr.keepOriginOnMove) {
+            content = content.replace(m, "");
+            removed = true;
+          }
           content = content.replace(regexParser(mr.dataReplaced as string), m);
         }
       });
@@ -211,6 +220,11 @@ class Converter {
       });
     });
 
+    return content;
+  }
+
+  handleCleanUp(content: string) {
+    content = content.replace(regexParser("(\n(\r\\s\t+)?)+"), "\n");
     return content;
   }
 

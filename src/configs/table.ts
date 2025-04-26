@@ -3,12 +3,10 @@ import { ERuleConfigType, IRuleConfig, regexParser } from "./utils";
 const ruleConfigs: IRuleConfig[] = [
   {
     type: ERuleConfigType.EDIT,
-    detected: `<table[^>]((?![^>]*id)[^>])*>%any%+?</table>`,
+    isNested: true,
+    detected: `<table[^>]((?![^>]*list)[^>])*>((?<!%any%*<table)%any%)+?</table>`,
     dataReplaced: (str) => {
-      str = str.replaceClasses(
-        regexParser("(<table[^>])%class%?([^>]*>)"),
-        "form-table"
-      );
+      str = str.replaceClasses(regexParser("(<table[^>]*>)"), "form-table");
 
       str = str.replace(
         regexParser(
@@ -17,10 +15,7 @@ const ruleConfigs: IRuleConfig[] = [
         '<div class="form-table__title">$2</div>'
       );
 
-      str = str.replaceClasses(
-        regexParser("<tr[^>]*[^>]*>"),
-        "form-table__row"
-      );
+      str = str.replaceClasses(regexParser("<tr[^>]*>"), "form-table__row");
 
       str = str.replaceClasses(
         regexParser("<td[^>]*tbl_header[^>]*>"),
@@ -38,7 +33,7 @@ const ruleConfigs: IRuleConfig[] = [
   },
   {
     type: ERuleConfigType.EDIT,
-    detected: `<table[^>]*id[^>]*>%any%+?</table>`,
+    detected: `<table[^>]*list[^>]*>%any%+?</table>`,
     dataReplaced: (str) => {
       str = str.replaceClasses(regexParser("<table[^>]*>"), "table");
 

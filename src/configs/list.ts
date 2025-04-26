@@ -15,7 +15,7 @@ const ruleConfigs: IRuleConfig[] = [
   },
   {
     type: ERuleConfigType.EDIT,
-    detected: '<div class="header_title">%any%+?</div>',
+    detected: "<div[^>*]header_title[^>*]>%any%+?</div>",
     dataReplaced: (str) => {
       const input = str.match(regexParser("<input[^>]*>"))?.[0] || "";
 
@@ -43,7 +43,20 @@ const ruleConfigs: IRuleConfig[] = [
     type: ERuleConfigType.MOVE,
     detected: '<ul class="pagination">%any%+?</ul>',
     dataReplaced:
-      '(?<=searchListCnt >= 0%any%+<div class="asis-content__list__header__right">\n)',
+      '(?<=(?:searchListCnt >= 0|pagerTotal > 0)%any%+<div class="asis-content__list__header__right">\n)',
+  },
+  {
+    type: ERuleConfigType.MOVE,
+    detected:
+      '(?<=<ul class="pagination">%any%+?</ul>)%before%*<input[^>]*>%after%*',
+    dataReplaced: '(?<=<div class="asis-content__list__footer">\n)',
+    keepOriginOnMove: true,
+  },
+  {
+    type: ERuleConfigType.MOVE,
+    detected: '<ul class="pagination">%any%+?</ul>',
+    dataReplaced: '(?<=<div class="asis-content__list__footer">\n)',
+    keepOriginOnMove: true,
   },
   {
     type: ERuleConfigType.EDIT,
@@ -56,78 +69,15 @@ const ruleConfigs: IRuleConfig[] = [
                 </div>`,
   },
   {
-    type: ERuleConfigType.EDIT,
-    detected: `(?<!searchListCnt >= 0%any%+)<table[^>]*>%any%+?</table>`,
-    dataReplaced: (str) => {
-      str = str.replaceClasses(
-        regexParser("(<table[^>])%class%?([^>]*>)"),
-        "form-table"
-      );
-
-      str = str.replace(
-        regexParser(
-          "<tr>%space%*<td[^>]*tbl_header txt_center[^>]*>([^<]*)</td>%space%*</tr>"
-        ),
-        '<div class="form-table__title">$2</div>'
-      );
-
-      str = str.replaceClasses(
-        regexParser("<tr[^>]*[^>]*>"),
-        "form-table__row"
-      );
-
-      str = str.replaceClasses(
-        regexParser("<td[^>]*tbl_header[^>]*>"),
-        "form-table__label"
-      );
-      str = str.replaceClasses(
-        regexParser("<td((?![^>]*form-table__label)[^>])*>"),
-        "form-table__control"
-      );
-
-      str = str.replace(regexParser("</(table|tr|td)>"), "</div>");
-      str = str.replace(regexParser("<(table|tr|td)"), "<div");
-      return str;
-    },
-  },
-  {
-    type: ERuleConfigType.EDIT,
-    detected: `(?<=searchListCnt >= 0%any%+)<table[^>]*>%any%+?</table>`,
-    dataReplaced: (str) => {
-      str = str.replaceClasses(regexParser("<table[^>]*>"), "table");
-
-      str = str.replaceClasses(regexParser("<thead[^>]*>"), "table__thead");
-
-      str = str.replaceClasses(regexParser("<tbody[^>]*>"), "table__tbody");
-
-      str = str.replaceClasses(
-        regexParser("(?<=<thead[^>]*>%any%*)<tr[^>]*>(?=%any%*</thead>)"),
-        "table__thead__row"
-      );
-
-      str = str.replaceClasses(
-        regexParser("(?<!<thead[^>]*>%any%*)<tr[^>]*>(?!%any%*</thead>)"),
-        "table__tbody__row"
-      );
-
-      str = str.replaceClasses(
-        regexParser("<th [^>]*>"),
-        "table__column table__column--border-right"
-      );
-
-      str = str.replaceClasses(
-        regexParser("<td[^>]*>"),
-        "table__column table__column--border-right"
-      );
-      str = str.replaceClasses(
-        regexParser(
-          "<t[dh][^>]*>(?=((?<!%any%*?</t[dh]>)%any%)*</t[dh]>%after%*</tr>)"
-        ),
-        "table__column"
-      );
-
-      return str;
-    },
+    type: ERuleConfigType.WRAP,
+    detected: "(<table[^>]*#table[^>]*>%any%*?</table>)",
+    dataReplaced: `
+    <div class="table__container">  
+      %content%
+    </div>
+    <div class="asis-content__list__footer">
+    </div>
+  `,
   },
 ];
 
